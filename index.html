@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ClearDose</title>
+
+  <!-- Fonts people can choose from (needs internet) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Lexend:wght@400;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Google's free icon set (we write the icon name, like "home") -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="headerRow">
+      <span class="material-symbols-outlined logoIcon">medication</span>
+      <div>
+        <h1>ClearDose</h1>
+        <p>Understand your medicine</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ========== HOME PAGE ========== -->
+    <section id="homePage" class="page">
+      <p id="todayDate" class="faded dateLine"></p>
+      <h2 id="greeting" class="pageTitle">Hello</h2>
+
+      <!-- Today's progress ring -->
+      <div class="card heroCard">
+        <div class="ringBox">
+          <svg class="ring" viewBox="0 0 120 120">
+            <circle class="ringBack" cx="60" cy="60" r="52"></circle>
+            <circle class="ringFill" id="ringFill" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="ringText">
+            <span class="ringNumber" id="ringNumber">0</span>
+            <span class="ringSmall" id="ringTotal">of 0</span>
+          </div>
+        </div>
+        <div>
+          <p class="heroTitle" id="progressText"></p>
+          <p class="faded" id="nextDoseText"></p>
+        </div>
+      </div>
+
+      <!-- Streak -->
+      <div class="card streakCard">
+        <div class="streakTop">
+          <span class="material-symbols-outlined streakIcon">local_fire_department</span>
+          <div>
+            <p class="streakNumber" id="streakText"></p>
+            <p class="faded" id="streakMessage"></p>
+          </div>
+        </div>
+        <div class="streakDots" id="streakDots"></div>
+      </div>
+
+      <!-- The medicine checklist gets filled in by app.js -->
+      <h3 class="sectionTitle">Today's medicines</h3>
+      <div id="medicineList"></div>
+
+      <!-- Bar chart of the last 7 days -->
+      <h3 class="sectionTitle">This week</h3>
+      <div class="card">
+        <div class="weekChart" id="weekChart"></div>
+      </div>
+
+      <!-- Next appointment -->
+      <h3 class="sectionTitle">Next appointment</h3>
+      <div class="card iconCard">
+        <span class="material-symbols-outlined iconCircle">event</span>
+        <div id="nextAppointment"></div>
+      </div>
+
+      <!-- Healthy habits shortcut -->
+      <button class="card iconCard linkCard" onclick="showPage('healthy')">
+        <span class="material-symbols-outlined iconCircle">spa</span>
+        <span>
+          <span class="bold">Healthy habits</span>
+          <span class="faded" id="healthySummary"></span>
+        </span>
+        <span class="material-symbols-outlined arrow">chevron_right</span>
+      </button>
+    </section>
+
+    <!-- ========== MEDICINES PAGE ========== -->
+    <section id="medicinesPage" class="page hidden">
+      <h2 class="pageTitle">My medicines</h2>
+
+      <!-- The list of medicines gets filled in by app.js -->
+      <div id="myMedicines"></div>
+
+      <!-- Form to add a medicine -->
+      <div class="card">
+        <h3>Add a medicine</h3>
+
+        <label for="medicineName">Medicine name</label>
+        <input type="text" id="medicineName" list="medicineSuggestions" placeholder="Start typing, like Metf..." autocomplete="off">
+        <!-- the list of suggestions that pops up while typing -->
+        <datalist id="medicineSuggestions"></datalist>
+        <p id="knownMessage" class="goodMessage"></p>
+
+        <label for="doseInput">Dose (for example 500 mg)</label>
+        <input type="text" id="doseInput">
+
+        <label>When do you take it?</label>
+        <div class="timeChoices">
+          <label class="timeChoice slot-morning"><input type="checkbox" class="timeBox" value="morning"> Morning <span class="faded">6 – 10 AM</span></label>
+          <label class="timeChoice slot-noon"><input type="checkbox" class="timeBox" value="noon"> Midday <span class="faded">11 AM – 2 PM</span></label>
+          <label class="timeChoice slot-evening"><input type="checkbox" class="timeBox" value="evening"> Evening <span class="faded">5 – 8 PM</span></label>
+          <label class="timeChoice slot-bedtime"><input type="checkbox" class="timeBox" value="bedtime"> Bedtime <span class="faded">9 – 11 PM</span></label>
+        </div>
+
+        <p id="formMessage" class="message"></p>
+        <button class="bigButton" id="saveMedicineButton">Save medicine</button>
+      </div>
+    </section>
+
+    <!-- ========== CALENDAR PAGE ========== -->
+    <section id="calendarPage" class="page hidden">
+      <div class="card">
+        <div class="monthRow">
+          <button class="roundButton" onclick="previousMonth()">
+            <span class="material-symbols-outlined">chevron_left</span>
+          </button>
+          <h2 id="monthTitle"></h2>
+          <button class="roundButton" onclick="nextMonth()">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+
+        <div class="calendarGrid" id="calendarGrid"></div>
+
+        <div class="legend">
+          <span><span class="legendBox dayGood"></span>All taken</span>
+          <span><span class="legendBox dayPartial"></span>Some missed</span>
+          <span><span class="legendBox dayMissed"></span>Missed</span>
+          <span><span class="legendDot"></span>Appointment</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Add an appointment</h3>
+        <p class="faded">Tip: tap a day on the calendar to pick it.</p>
+
+        <label for="apptTitle">What is it?</label>
+        <input type="text" id="apptTitle" placeholder="For example: Dr. Patel - heart check">
+
+        <label for="apptDate">Date</label>
+        <input type="date" id="apptDate">
+
+        <label for="apptTime">Time</label>
+        <input type="time" id="apptTime" value="10:00">
+
+        <p id="apptMessage" class="message"></p>
+        <button class="bigButton" onclick="addAppointment()">Save appointment</button>
+      </div>
+
+      <h3 class="sectionTitle">Upcoming</h3>
+      <div id="appointmentList"></div>
+    </section>
+
+    <!-- ========== HEALTH PAGE ========== -->
+    <section id="healthyPage" class="page hidden">
+      <h2 class="pageTitle">Healthy habits</h2>
+      <p class="faded">5 new habits every day, linked to a longer, healthier life.</p>
+
+      <div class="card">
+        <p class="bold" id="habitProgressText"></p>
+        <div class="progressBar">
+          <div class="progressFill" id="habitProgressFill"></div>
+        </div>
+        <p class="faded smallText">Last 7 days</p>
+        <div class="weekRow" id="weekRow"></div>
+      </div>
+
+      <div id="habitList"></div>
+
+      <p class="faded smallText">These are general wellness tips, not medical advice. Ask your doctor what is safe for you.</p>
+    </section>
+
+    <!-- ========== SETTINGS PAGE ========== -->
+    <section id="settingsPage" class="page hidden">
+      <h2 class="pageTitle">Settings</h2>
+
+      <div class="card">
+        <h3>Look and feel</h3>
+
+        <label for="themeSelect">Color theme</label>
+        <select id="themeSelect">
+          <option value="light">Light (navy and white)</option>
+          <option value="dark">Dark (black)</option>
+        </select>
+
+        <label for="fontSelect">Font</label>
+        <select id="fontSelect">
+          <option value="system">Standard</option>
+          <option value="atkinson">Easy to read (Atkinson)</option>
+          <option value="lexend">Clear spacing (Lexend)</option>
+          <option value="serif">Classic (Merriweather)</option>
+        </select>
+
+        <label for="sizeSelect">Text size</label>
+        <select id="sizeSelect">
+          <option value="normal">Normal</option>
+          <option value="large">Large</option>
+          <option value="xlarge">Extra large</option>
+        </select>
+
+        <label class="checkRow">
+          <input type="checkbox" id="contrastBox">
+          High contrast mode
+        </label>
+      </div>
+
+      <div class="card">
+        <h3>Patient</h3>
+        <label for="nameInput">Your name</label>
+        <input type="text" id="nameInput" placeholder="For example: Mrs. Khan">
+      </div>
+
+      <div class="card">
+        <h3>Demo</h3>
+        <p class="faded">Fill the app with a sample patient for practice. This replaces your current medicines.</p>
+        <button class="smallButton" onclick="loadSampleData()">Load sample patient</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========== BOTTOM MENU ========== -->
+  <nav>
+    <button class="navButton" id="homeNav" onclick="showPage('home')">
+      <span class="material-symbols-outlined navIcon">home</span>Home
+    </button>
+    <button class="navButton" id="medicinesNav" onclick="showPage('medicines')">
+      <span class="material-symbols-outlined navIcon">medication</span>Medicines
+    </button>
+    <button class="navButton" id="calendarNav" onclick="showPage('calendar')">
+      <span class="material-symbols-outlined navIcon">calendar_month</span>Calendar
+    </button>
+    <button class="navButton" id="healthyNav" onclick="showPage('healthy')">
+      <span class="material-symbols-outlined navIcon">spa</span>Health
+    </button>
+    <button class="navButton" id="settingsNav" onclick="showPage('settings')">
+      <span class="material-symbols-outlined navIcon">settings</span>Settings
+    </button>
+  </nav>
+
+  <!-- The order matters: the medicine book first, the starter (app.js) last -->
+  <script src="medicines.js"></script>
+  <script src="calendar.js"></script>
+  <script src="healthy.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

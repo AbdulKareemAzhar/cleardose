@@ -1,0 +1,747 @@
+/* =====================================================
+   ClearDose - styles
+   ===================================================== */
+
+/* ---------- COLORS ---------- */
+/* Each theme just changes these variables. */
+
+:root {
+  --bg: #eef2f8;
+  --text: #0b1f3a;
+  --faded: #5b6b82;
+  --card: #ffffff;
+  --primary: #0a2a5e;          /* navy blue */
+  --primary-light: #1d4f9a;    /* lighter navy for the header fade */
+  --primary-soft: #e3eaf6;     /* very light navy for backgrounds */
+  --primary-text: #ffffff;
+  --border: #dde5f0;
+  --shadow: 0 4px 14px rgba(10, 42, 94, 0.08);
+  --done: #e7f6ed;             /* light green for finished doses */
+  --done-text: #1e7a45;
+  --warn: #b83227;
+
+  /* one color for each time of day */
+  --morning: #e8962e;
+  --noon: #2f9bd6;
+  --evening: #7a5cc7;
+  --bedtime: #2c3e7a;
+}
+
+[data-theme="dark"] {
+  --bg: #000000;
+  --text: #ffffff;
+  --faded: #aab4c6;
+  --card: #121417;
+  --primary: #6cb4ff;
+  --primary-light: #0a2a5e;
+  --primary-soft: #1a2433;
+  --primary-text: #000000;
+  --border: #2a2f37;
+  --shadow: none;
+  --done: #0f2a1a;
+  --done-text: #7ee0a3;
+  --warn: #ff8a7d;
+  --morning: #ffb256;
+  --noon: #6cc6ff;
+  --evening: #b49cff;
+  --bedtime: #8fa6ff;
+}
+
+/* High contrast: pure colors and thick borders */
+[data-contrast="high"] {
+  --bg: #ffffff;
+  --text: #000000;
+  --faded: #000000;
+  --card: #ffffff;
+  --primary: #000a3d;
+  --primary-light: #000a3d;
+  --primary-soft: #ffffff;
+  --primary-text: #ffffff;
+  --border: #000000;
+  --shadow: none;
+  --done: #ffffff;
+  --done-text: #000000;
+  --morning: #000000;
+  --noon: #000000;
+  --evening: #000000;
+  --bedtime: #000000;
+}
+
+[data-theme="dark"][data-contrast="high"] {
+  --bg: #000000;
+  --text: #ffffff;
+  --faded: #ffffff;
+  --card: #000000;
+  --primary: #ffd400;          /* yellow on black is very easy to see */
+  --primary-light: #000000;
+  --primary-soft: #000000;
+  --primary-text: #000000;
+  --border: #ffffff;
+  --done: #000000;
+  --done-text: #ffd400;
+  --morning: #ffd400;
+  --noon: #ffd400;
+  --evening: #ffd400;
+  --bedtime: #ffd400;
+}
+
+/* ---------- FONTS ---------- */
+[data-font="system"]   { --font: system-ui, Arial, sans-serif; }
+[data-font="atkinson"] { --font: "Atkinson Hyperlegible", Arial, sans-serif; }
+[data-font="lexend"]   { --font: "Lexend", Arial, sans-serif; }
+[data-font="serif"]    { --font: "Merriweather", Georgia, serif; }
+
+/* ---------- TEXT SIZE ---------- */
+[data-size="normal"]  { font-size: 17px; }
+[data-size="large"]   { font-size: 20px; }
+[data-size="xlarge"]  { font-size: 24px; }
+
+/* ---------- ICONS ---------- */
+.material-symbols-outlined {
+  font-size: 1.4em;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* ---------- PAGE ---------- */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.5;
+}
+
+header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: var(--primary-text);
+  padding: 18px 20px 22px 20px;
+}
+
+[data-theme="dark"] header { background: linear-gradient(135deg, #0a2a5e, #1d4f9a); color: #ffffff; }
+[data-theme="dark"][data-contrast="high"] header { color: #ffd400; border-bottom: 3px solid #ffd400; }
+
+.headerRow {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logoIcon {
+  font-size: 2rem;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  padding: 8px;
+}
+
+header h1 { margin: 0; font-size: 1.4rem; }
+header p  { margin: 0; opacity: 0.85; font-size: 0.85rem; }
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 16px 120px 16px;   /* extra space at the bottom for the menu */
+}
+
+.hidden { display: none; }
+.faded  { color: var(--faded); margin-top: 0; }
+.bold   { font-weight: bold; margin: 0; }
+.smallText { font-size: 0.8rem; margin-top: 12px; }
+
+.pageTitle { margin: 0 0 12px 0; font-size: 1.5rem; }
+.dateLine  { margin: 4px 0 0 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.sectionTitle {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faded);
+  margin: 26px 0 10px 4px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+
+[data-contrast="high"] .card { border-width: 3px; }
+
+h3 { margin-top: 0; }
+
+label { display: block; font-weight: bold; margin-top: 14px; }
+
+select, input[type="text"], input[type="date"], input[type="time"] {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 1rem;
+  padding: 12px;
+  margin-top: 6px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit;
+}
+
+select:focus, input:focus { outline: 3px solid var(--primary); outline-offset: 1px; }
+
+input[type="checkbox"] { accent-color: var(--primary); }
+
+.checkRow { display: flex; align-items: center; gap: 10px; }
+.checkRow input { width: 24px; height: 24px; }
+
+/* ---------- BUTTONS ---------- */
+.bigButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: bold;
+  padding: 15px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 14px;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.bigButton:active { transform: scale(0.97); }
+
+[data-contrast="high"] .bigButton { border: 3px solid var(--text); }
+
+.smallButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  padding: 9px 14px;
+  margin-top: 10px;
+  margin-right: 8px;
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--primary);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.removeButton { border-color: var(--warn); color: var(--warn); }
+
+.roundButton {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.undoButton {
+  background: none;
+  border: none;
+  color: var(--text);
+  text-decoration: underline;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.message     { font-weight: bold; color: var(--warn); }
+.goodMessage { font-size: 0.85rem; color: var(--done-text); margin: 6px 0 0 0; }
+
+/* ---------- HOME: PROGRESS RING ---------- */
+.heroCard {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.heroTitle { font-size: 1.15rem; font-weight: bold; margin: 0 0 4px 0; }
+
+.ringBox {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  flex-shrink: 0;
+}
+
+.ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);     /* start the ring at the top */
+}
+
+.ringBack {
+  fill: none;
+  stroke: var(--primary-soft);
+  stroke-width: 12;
+}
+
+[data-contrast="high"] .ringBack { stroke: var(--border); stroke-width: 4; }
+
+.ringFill {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-dasharray: 327;         /* the length all the way around the circle */
+  stroke-dashoffset: 327;        /* app.js makes this smaller to fill the ring */
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+.ringFill.complete { stroke: var(--done-text); }
+
+.ringText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ringNumber { font-size: 1.8rem; font-weight: bold; line-height: 1; }
+.ringSmall  { font-size: 0.75rem; color: var(--faded); }
+
+/* ---------- HOME: STREAK ---------- */
+.streakTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.streakIcon {
+  font-size: 2.2rem;
+  color: #e8662e;
+  background: #fff0e6;
+  border-radius: 50%;
+  padding: 10px;
+}
+
+[data-theme="dark"] .streakIcon     { background: #2a1a10; }
+[data-contrast="high"] .streakIcon  { color: var(--text); background: none; border: 3px solid var(--text); }
+
+.streakNumber { font-size: 1.15rem; font-weight: bold; margin: 0; }
+
+.streakDots {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.streakDay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--faded);
+}
+
+.dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.dot .material-symbols-outlined { font-size: 1.1rem; }
+.dot.filled  { background: #e8662e; border-color: #e8662e; }
+.dot.today   { border: 3px solid var(--primary); }
+[data-contrast="high"] .dot.filled { background: var(--text); border-color: var(--text); color: var(--card); }
+
+/* ---------- HOME: MEDICINE CHECKLIST ---------- */
+/* each time of day has its own color */
+.slot-morning { --slot: var(--morning); }
+.slot-noon    { --slot: var(--noon); }
+.slot-evening { --slot: var(--evening); }
+.slot-bedtime { --slot: var(--bedtime); }
+
+.slotHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 8px 4px;
+}
+
+.slotBar {
+  width: 6px;
+  height: 22px;
+  border-radius: 3px;
+  background: var(--slot);
+}
+
+.slotName { font-weight: bold; font-size: 1.05rem; }
+.slotTime { color: var(--faded); font-size: 0.85rem; }
+
+.lateTag {
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: var(--warn);
+  border: 2px solid var(--warn);
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+
+.medicine {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--slot, var(--primary));
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+
+.medicine.taken { background: var(--done); }
+
+[data-contrast="high"] .medicine { border-width: 3px; border-left-width: 8px; }
+
+.medName { font-size: 1.15rem; font-weight: bold; margin: 0; }
+.medicine .faded { margin: 2px 0 0 0; }
+
+.takenRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font-weight: bold;
+  color: var(--done-text);
+}
+
+.takenRow span { display: flex; align-items: center; gap: 6px; }
+
+/* a little "pop" when a dose is checked off */
+.justTaken { animation: pop 0.35s ease; }
+
+@keyframes pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- HOME: WEEK CHART ---------- */
+.weekChart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  height: 150px;
+}
+
+.barColumn {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.barValue { font-size: 0.7rem; color: var(--faded); }
+
+.bar {
+  width: 100%;
+  max-width: 34px;
+  border-radius: 8px 8px 4px 4px;
+  background: var(--primary);
+  min-height: 4px;
+  transition: height 0.5s ease;
+}
+
+.bar.empty   { background: var(--border); }
+.bar.partial { opacity: 0.55; }
+
+.barLabel { font-size: 0.75rem; font-weight: bold; color: var(--faded); }
+.barLabel.isToday { color: var(--primary); }
+
+/* ---------- CARDS WITH AN ICON ---------- */
+.iconCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.iconCircle {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-radius: 50%;
+  padding: 10px;
+  flex-shrink: 0;
+}
+
+[data-contrast="high"] .iconCircle { border: 2px solid var(--text); }
+
+.iconCard p { margin: 0; }
+
+.linkCard {
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.linkCard span span { display: block; }
+.arrow { margin-left: auto; color: var(--faded); }
+
+.emptyCard { text-align: center; }
+.emptyIcon { font-size: 3rem; color: var(--primary); }
+
+/* ---------- MEDICINES PAGE ---------- */
+.infoBox {
+  background: var(--primary-soft);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-top: 10px;
+}
+
+.infoTitle {
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+  margin: 0;
+}
+
+.infoBox p { margin: 4px 0 0 0; }
+
+.chip {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: bold;
+  padding: 3px 10px;
+  margin: 8px 6px 0 0;
+  border-radius: 20px;
+  border: 2px solid var(--slot);
+  color: var(--text);
+}
+
+.timeChoices { display: grid; gap: 8px; margin-top: 8px; }
+
+.timeChoice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 2px solid var(--border);
+  border-left: 6px solid var(--slot);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.timeChoice input { width: 22px; height: 22px; }
+.timeChoice .faded { margin-left: auto; font-weight: normal; font-size: 0.85rem; }
+
+/* ---------- CALENDAR ---------- */
+.monthRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.monthRow h2 { margin: 0; font-size: 1.2rem; }
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-top: 14px;
+}
+
+.dayName {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: var(--faded);
+}
+
+.dayBox {
+  position: relative;
+  aspect-ratio: 1;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dayBox.isToday { border-color: var(--primary); }
+
+.dayGood    { background: #cdeed9; }
+.dayPartial { background: #ffe2a8; }
+.dayMissed  { background: #f8cfc9; }
+
+[data-theme="dark"] .dayGood    { background: #1d4a2d; }
+[data-theme="dark"] .dayPartial { background: #5a4310; }
+[data-theme="dark"] .dayMissed  { background: #5c1f19; }
+
+[data-contrast="high"] .dayBox { border: 2px solid var(--border); }
+
+.apptDot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 0.75rem;
+  color: var(--faded);
+}
+
+.legend > span { display: flex; align-items: center; gap: 5px; }
+
+.legendBox {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.legendDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+/* ---------- HEALTH PAGE ---------- */
+.progressBar {
+  height: 14px;
+  background: var(--primary-soft);
+  border-radius: 10px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+[data-contrast="high"] .progressBar { border: 2px solid var(--border); }
+
+.progressFill {
+  height: 100%;
+  width: 0%;
+  background: var(--primary);
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+.weekRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.weekCircle {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.weekOkay { background: #ffe2a8; color: #000000; }
+.weekGood { background: var(--primary); color: var(--primary-text); }
+
+.habit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  margin: 0 0 10px 0;
+  font-weight: normal;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+[data-contrast="high"] .habit { border-width: 3px; }
+
+.habit input { width: 26px; height: 26px; flex-shrink: 0; }
+.habitDone   { background: var(--done); }
+.habitWhy    { display: block; font-size: 0.8rem; color: var(--faded); }
+
+/* ---------- BOTTOM MENU ---------- */
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 14px rgba(10, 42, 94, 0.06);
+  padding: 6px 4px 10px 4px;
+}
+
+.navButton {
+  flex: 1;
+  max-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  background: none;
+  border: none;
+  font-size: 0.68rem;
+  font-weight: bold;
+  font-family: inherit;
+  color: var(--faded);
+  cursor: pointer;
+}
+
+.navIcon {
+  font-size: 1.5rem;
+  padding: 3px 16px;
+  border-radius: 20px;
+}
+
+.navButton.active { color: var(--primary); }
+.navButton.active .navIcon {
+  background: var(--primary-soft);
+  font-variation-settings: "FILL" 1;   /* filled-in icon for the page you're on */
+}
