@@ -719,7 +719,10 @@ nav {
 
 .navButton {
   flex: 1;
+  min-width: 0;              /* lets 5 buttons fit on small phones */
   max-width: 120px;
+  overflow: hidden;
+  white-space: nowrap;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -736,7 +739,7 @@ nav {
 
 .navIcon {
   font-size: 1.5rem;
-  padding: 3px 16px;
+  padding: 3px 10px;
   border-radius: 20px;
 }
 
@@ -744,4 +747,76 @@ nav {
 .navButton.active .navIcon {
   background: var(--primary-soft);
   font-variation-settings: "FILL" 1;   /* filled-in icon for the page you're on */
+}
+
+
+/* ---------- READ ALOUD BUTTON ---------- */
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.speakButton {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary-soft);
+  color: var(--primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-contrast="high"] .speakButton { border: 2px solid var(--text); }
+
+/* ---------- MEDICINE INFO ---------- */
+.infoTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.infoTitle .material-symbols-outlined { font-size: 1.2rem; }
+
+.justAdded {
+  border-color: var(--done-text);
+  border-width: 2px;
+  animation: pop 0.4s ease;
+}
+
+.addedBanner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px 0;
+  font-weight: bold;
+  color: var(--done-text);
+}
+
+/* ---------- SCANNER ---------- */
+.scanBox { margin-top: 6px; }
+.scanButton { margin-top: 0; }
+
+.scanPreview {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 12px;
+  margin-top: 10px;
+  background: var(--bg);
+}
+
+.scanBox details { margin-top: 8px; font-size: 0.8rem; color: var(--faded); }
+.scanBox pre { white-space: pre-wrap; font-family: inherit; }
+
+.orLine {
+  text-align: center;
+  color: var(--faded);
+  font-size: 0.85rem;
+  margin: 16px 0 0 0;
 }

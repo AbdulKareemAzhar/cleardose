@@ -102,6 +102,23 @@
       <div class="card">
         <h3>Add a medicine</h3>
 
+        <!-- Scan a label (uses the camera or a photo) -->
+        <div class="scanBox">
+          <button class="bigButton scanButton" onclick="startScan()">
+            <span class="material-symbols-outlined">photo_camera</span> Scan a label
+          </button>
+          <p class="faded smallText">Take a clear photo of the pharmacy label in good light. The photo stays on your phone.</p>
+          <input type="file" id="scanInput" accept="image/*" class="hidden">
+          <img id="scanPreview" class="scanPreview hidden" alt="Photo of the label">
+          <p id="scanStatus" class="goodMessage"></p>
+          <details id="scanTextBox" class="hidden">
+            <summary>See the words it read</summary>
+            <pre id="scanText"></pre>
+          </details>
+        </div>
+
+        <p class="orLine">or type it in</p>
+
         <label for="medicineName">Medicine name</label>
         <input type="text" id="medicineName" list="medicineSuggestions" placeholder="Start typing, like Metf..." autocomplete="off">
         <!-- the list of suggestions that pops up while typing -->
@@ -255,10 +272,15 @@
     </button>
   </nav>
 
+  <!-- The AI text reader for scanning labels (loads from the internet) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+
   <!-- The order matters: the medicine book first, the starter (app.js) last -->
   <script src="medicines.js"></script>
   <script src="calendar.js"></script>
   <script src="healthy.js"></script>
+  <script src="voice.js"></script>
   <script src="app.js"></script>
+  <script src="scanner.js"></script>
 </body>
 </html>

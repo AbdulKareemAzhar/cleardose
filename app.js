@@ -1,4 +1,4 @@
-// ClearDose - the main app file (Step 5: new design)
+// ClearDose - the main app file
 // (It runs last, after medicines.js, calendar.js and healthy.js)
 
 // =====================================================
@@ -99,6 +99,16 @@ function loadMedicines() {
       nextId = medicines[i].id + 1;
     }
   }
+}
+
+// Finds one of the person's medicines by its id number
+function findMyMedicine(medId) {
+  for (let i = 0; i < medicines.length; i++) {
+    if (medicines[i].id === medId) {
+      return medicines[i];
+    }
+  }
+  return null;
 }
 
 function saveMedicines() {
@@ -509,7 +519,11 @@ function showChecklist() {
       }
 
       html = html + '<div class="' + cardClass + '">';
+      html = html + '<div class="cardTop">';
       html = html + '<p class="medName">' + cleanText(med.name) + '</p>';
+      html = html + '<button class="speakButton" onclick="speakDose(' + med.id + ')" aria-label="Read aloud">';
+      html = html + '<span class="material-symbols-outlined">volume_up</span></button>';
+      html = html + '</div>';
       html = html + '<p class="faded">' + cleanText(med.dose) + getUse(med) + '</p>';
 
       if (done) {
@@ -538,6 +552,18 @@ function showChecklist() {
 // Which medicine has its info open (0 means none)
 let openInfoId = 0;
 
+// The medicine that was just added (gets a "Just added" message)
+let justAddedId = 0;
+
+// Makes one info section, like "Common side effects"
+function infoSection(icon, title, text) {
+  let html = '<div class="infoBox">';
+  html = html + '<p class="infoTitle"><span class="material-symbols-outlined">' + icon + '</span>' + title + '</p>';
+  html = html + '<p>' + text + '</p>';
+  html = html + '</div>';
+  return html;
+}
+
 function showMedicinesPage() {
   let html = "";
 
@@ -550,8 +576,22 @@ function showMedicinesPage() {
     const med = sortedMeds[i];
     const info = findMedicineInfo(med.name);
 
-    html = html + '<div class="medicine">';
+    let cardClass = "medicine";
+    if (med.id === justAddedId) {
+      cardClass = cardClass + " justAdded";
+    }
+
+    html = html + '<div class="' + cardClass + '" id="med-' + med.id + '">';
+
+    if (med.id === justAddedId) {
+      html = html + '<p class="addedBanner"><span class="material-symbols-outlined">check_circle</span>Added! Here is what to know.</p>';
+    }
+
+    html = html + '<div class="cardTop">';
     html = html + '<p class="medName">' + cleanText(med.name) + '</p>';
+    html = html + '<button class="speakButton" onclick="speakMedicine(' + med.id + ')" aria-label="Read aloud">';
+    html = html + '<span class="material-symbols-outlined">volume_up</span></button>';
+    html = html + '</div>';
     html = html + '<p class="faded">' + cleanText(med.dose) + getUse(med) + '</p>';
 
     // the times, shown as colored chips like "Morning 6 – 10 AM"
@@ -560,22 +600,25 @@ function showMedicinesPage() {
       html = html + '<span class="chip slot-' + time + '">' + timeSlots[time].name + ' · ' + timeSlots[time].range + '</span>';
     }
 
-    // the info section (only shown when opened)
-    if (openInfoId === med.id && info) {
-      html = html + '<div class="infoBox"><p class="infoTitle">What it is for</p><p>' + info.use + '</p></div>';
-      html = html + '<div class="infoBox"><p class="infoTitle">How to take it</p><p>' + info.how + '</p></div>';
-      html = html + '<div class="infoBox"><p class="infoTitle">Watch for</p><p>' + info.watch + '</p></div>';
-      html = html + '<p class="faded">Always follow your label and your doctor.</p>';
-    }
-
-    if (info) {
-      if (openInfoId === med.id) {
-        html = html + '<button class="smallButton" onclick="toggleInfo(' + med.id + ')"><span class="material-symbols-outlined">expand_less</span>Hide info</button>';
+    // the info sections (only shown when opened)
+    if (openInfoId === med.id) {
+      if (info) {
+        html = html + infoSection("help", "What it is used for", info.helps);
+        html = html + infoSection("schedule", "How to take it", info.how + ' <span class="faded">(Follow your label if it says something different.)</span>');
+        html = html + infoSection("sick", "Common side effects", info.sideEffects);
+        html = html + infoSection("warning", "Precautions", info.precautions);
+        html = html + '<p class="faded smallText">This is a simple summary. Always follow your label and your doctor.</p>';
       } else {
-        html = html + '<button class="smallButton" onclick="toggleInfo(' + med.id + ')"><span class="material-symbols-outlined">info</span>More info</button>';
+        html = html + '<p class="faded">ClearDose does not have information about this medicine yet. Ask your pharmacist what it is for and how to take it.</p>';
       }
     }
 
+    if (openInfoId === med.id) {
+      html = html + '<button class="smallButton" onclick="toggleInfo(' + med.id + ')"><span class="material-symbols-outlined">expand_less</span>Hide info</button>';
+    } else {
+      html = html + '<button class="smallButton" onclick="toggleInfo(' + med.id + ')"><span class="material-symbols-outlined">info</span>More info</button>';
+    }
+    html = html + '<button class="smallButton" onclick="speakMedicine(' + med.id + ')"><span class="material-symbols-outlined">volume_up</span>Listen</button>';
     html = html + '<button class="smallButton removeButton" onclick="removeMedicine(' + med.id + ')"><span class="material-symbols-outlined">delete</span>Remove</button>';
     html = html + '</div>';
   }
@@ -633,19 +676,22 @@ function setTimeBoxes(times) {
   }
 }
 
-// Every time they type a letter, see if we know the medicine
-medicineName.addEventListener("input", function () {
+// Checks if we know the typed medicine, and fills in the usual dose and times
+function checkKnownMedicine() {
   formMessage.textContent = "";
   const info = findMedicineInfo(medicineName.value);
 
   if (info) {
-    knownMessage.textContent = "ClearDose knows this medicine. We filled in the usual dose and times. Change them to match your label.";
+    knownMessage.textContent = "ClearDose knows this medicine (" + info.name + "). We filled in the usual dose and times. Change them to match your label.";
     doseInput.value = info.dose;
     setTimeBoxes(info.times);
   } else {
     knownMessage.textContent = "";
   }
-});
+}
+
+// Every time they type a letter, check again
+medicineName.addEventListener("input", checkKnownMedicine);
 
 // Save button
 document.getElementById("saveMedicineButton").addEventListener("click", function () {
@@ -676,8 +722,9 @@ document.getElementById("saveMedicineButton").addEventListener("click", function
   }
 
   // 4. Add it to the list and save
+  const newId = nextId;
   medicines.push({
-    id: nextId,
+    id: newId,
     name: name,
     dose: doseInput.value.trim(),
     times: times
@@ -692,8 +739,15 @@ document.getElementById("saveMedicineButton").addEventListener("click", function
   knownMessage.textContent = "";
   formMessage.textContent = "";
   setTimeBoxes([]);
+  document.getElementById("scanStatus").textContent = "";
+  document.getElementById("scanPreview").classList.add("hidden");
+  document.getElementById("scanTextBox").classList.add("hidden");
 
+  // 6. Show the new medicine with its information open
+  openInfoId = newId;
+  justAddedId = newId;
   showMedicinesPage();
+  document.getElementById("med-" + newId).scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 
