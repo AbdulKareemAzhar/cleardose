@@ -30,66 +30,49 @@ scanInput.addEventListener("change", function () {
 // "async" and "await" mean: wait for the reader to finish before going on.
 async function readLabel(photo) {
   if (typeof Tesseract === "undefined") {
-    scanStatus.textContent = "The scanner needs the internet. Please type the medicine instead.";
+    scanStatus.textContent = t("scan_needs_internet");
     return;
   }
 
-  scanStatus.textContent = "Getting the scanner ready...";
+  scanStatus.textContent = t("scan_getting_ready");
 
   try {
     const result = await Tesseract.recognize(photo, "eng", {
       logger: function (progress) {
         if (progress.status === "recognizing text") {
-          scanStatus.textContent = "Reading the label... " + Math.round(progress.progress * 100) + "%";
+          scanStatus.textContent = t("scan_reading", { percent: Math.round(progress.progress * 100) });
         }
       }
     });
     useLabelText(result.data.text);
   } catch (error) {
-    scanStatus.textContent = "Sorry, that photo couldn't be read. Try again in good light, or type the medicine in.";
+    scanStatus.textContent = t("scan_failed");
   }
 }
 
-// Looks through the label's words for a medicine we know
-function findMedicineInText(text) {
-  // scanners often mix up the number 0 and the letter o (like "Metf0rmin")
-  text = text.replace(/0/g, "o");
-
-  // 1. brand names, like "Lipitor"
-  for (const brand in brandNames) {
-    if (text.includes(brand)) {
-      return findMedicineInfo(brandNames[brand]);
-    }
+// Looks for a dose like "500 mg", "0.4 mg", "1,000 IU", "10 units" or "10 mEq"
+function findDoseInText(text) {
+  const match = text.match(/(\d[\d,]*(\.\d+)?)\s*(mcg|mg|meq|ml|iu|units|unit|g)\b/);
+  if (!match) {
+    return "";
   }
+  // write the unit the usual way
+  const unitNames = { mcg: "mcg", mg: "mg", meq: "mEq", ml: "mL", iu: "IU", units: "units", unit: "units", g: "g" };
+  return match[1] + " " + unitNames[match[3]];
+}
 
-  // 2. the full medicine name, like "metformin"
-  for (let i = 0; i < medicineLibrary.length; i++) {
-    if (text.includes(medicineLibrary[i].name.toLowerCase())) {
-      return medicineLibrary[i];
-    }
+// Looks for how often to take it, like "twice daily" or "once a week"
+function findOftenInText(text) {
+  if (text.includes("once a week") || text.includes("once weekly") || text.includes("every week") || text.includes("weekly")) {
+    return "weekly";
   }
-
-  // 3. the first 5 letters, in case the scanner got a later letter wrong
-  for (let i = 0; i < medicineLibrary.length; i++) {
-    const start = medicineLibrary[i].name.toLowerCase().substring(0, 5);
-    if (text.includes(start)) {
-      return medicineLibrary[i];
-    }
+  if (text.includes("as needed") || text.includes("when needed") || text.includes(" prn")) {
+    return "asneeded";
   }
-
   return null;
 }
 
-// Looks for a dose like "500 mg" or "0.4 mg"
-function findDoseInText(text) {
-  const match = text.match(/(\d+(\.\d+)?)\s*(mg|mcg|ml)\b/);
-  if (match) {
-    return match[1] + " " + match[3];
-  }
-  return "";
-}
-
-// Looks for how often to take it, like "twice daily"
+// Looks for the times of day, like "twice daily"
 function findTimesInText(text) {
   if (text.includes("four times") || text.includes("4 times") || text.includes("every 6 hours")) {
     return ["morning", "noon", "evening", "bedtime"];
@@ -103,13 +86,26 @@ function findTimesInText(text) {
   if (text.includes("bedtime") || text.includes("at night") || text.includes("before bed")) {
     return ["bedtime"];
   }
-  if (text.includes("in the evening")) {
+  if (text.includes("in the evening") || text.includes("with dinner")) {
     return ["evening"];
   }
-  if (text.includes("in the morning")) {
+  if (text.includes("in the morning") || text.includes("with breakfast")) {
     return ["morning"];
   }
   return null;   // not sure, so we keep the usual times
+}
+
+// Looks for how many to take, like "take 2 tablets" or "take one capsule"
+function findCountInText(text) {
+  const numberWords = { one: 1, two: 2, three: 3, four: 4 };
+  const match = text.match(/take (\d|one|two|three|four) (tablet|capsule|pill|puff|spray|drop|softgel|gummies|gummy)/);
+  if (!match) {
+    return 0;
+  }
+  if (numberWords[match[1]]) {
+    return numberWords[match[1]];
+  }
+  return Number(match[1]);
 }
 
 // Fills in the form with what we found on the label
@@ -122,24 +118,34 @@ function useLabelText(text) {
 
   const info = findMedicineInText(lowerText);
   const dose = findDoseInText(lowerText);
+  const often = findOftenInText(lowerText);
   const times = findTimesInText(lowerText);
+  const count = findCountInText(lowerText);
 
   if (info) {
     medicineName.value = info.name;
-    checkKnownMedicine();   // fills in the usual dose and times (in app.js)
+    checkKnownMedicine();   // fills in the usual dose, times and unit (in app.js)
   }
   if (dose !== "") {
     doseInput.value = dose;
   }
+  if (often) {
+    oftenSelect.value = often;
+    showOftenChoices();
+  }
   if (times) {
     setTimeBoxes(times);
   }
+  if (count > 0) {
+    formCount = count;
+    showFormCount();
+  }
 
   if (info) {
-    scanStatus.textContent = "Found " + info.name + (dose ? " " + dose : "") + ". Please check it matches your label, then tap Save.";
+    scanStatus.textContent = t("scan_found", { name: info.name + (dose ? " " + dose : "") });
   } else if (dose !== "") {
-    scanStatus.textContent = "We found the dose but not the medicine name. Please type the name.";
+    scanStatus.textContent = t("scan_dose_only");
   } else {
-    scanStatus.textContent = "We couldn't find a medicine we know. Please type it in.";
+    scanStatus.textContent = t("scan_nothing");
   }
 }

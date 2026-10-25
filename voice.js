@@ -14,7 +14,7 @@ if ("speechSynthesis" in window) {
   speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-// Picks the most natural-sounding voice for a language (like "en")
+// Picks the most natural-sounding voice for a language (like "es")
 function pickBestVoice(languageCode) {
   // all voices for this language
   let matching = [];
@@ -41,20 +41,32 @@ function pickBestVoice(languageCode) {
   return null;
 }
 
-// Reads any text out loud
-function speak(text) {
+// Remembers which languages we already warned about (so we only say it once)
+let warnedNoVoice = {};
+
+// Reads any text out loud.
+// languageCode is "en", "es", "ur", "ar" or "zh" (the chosen language if left out)
+function speak(text, languageCode) {
   if (!("speechSynthesis" in window)) {
-    return;   // this browser can't talk
+    showToast(t("no_voice_at_all"));
+    return;
+  }
+  if (!languageCode) {
+    languageCode = settings.language;
   }
   speechSynthesis.cancel();   // stop anything already talking
 
   const speech = new SpeechSynthesisUtterance(text);
-  speech.lang = "en-US";
-  speech.rate = 0.9;          // a little slower, easier to follow
+  speech.lang = languageInfo(languageCode).voice;   // like "es-MX"
+  speech.rate = 0.9;                                 // a little slower, easier to follow
 
-  const voice = pickBestVoice("en");
+  const voice = pickBestVoice(languageCode);
   if (voice) {
     speech.voice = voice;
+  } else if (allVoices.length > 0 && !warnedNoVoice[languageCode]) {
+    // this phone has no voice for this language
+    warnedNoVoice[languageCode] = true;
+    showToast(t("no_voice"));
   }
   speechSynthesis.speak(speech);
 }
@@ -65,11 +77,18 @@ function speakDose(medId) {
   if (!med) { return; }
   const info = findMedicineInfo(med.name);
 
-  let text = med.name + ". " + med.dose + ". ";
-  if (info) {
-    text = text + info.use + ". " + info.how;
+  // if this medicine isn't translated yet, read it all in English
+  let language = settings.language;
+  if (info && !hasTranslation(info)) {
+    language = "en";
   }
-  speak(text);
+
+  let text = med.name + ". " + med.dose + ". ";
+  text = text + tIn(language, "take_amount", { amount: countTextIn(language, med.count, getUnit(med)) }) + ". ";
+  if (info) {
+    text = text + medicineTextIn(language, info, "use") + ". " + medicineTextIn(language, info, "how");
+  }
+  speak(text, language);
 }
 
 // Reads everything about a medicine (used on the Medicines page)
@@ -78,12 +97,33 @@ function speakMedicine(medId) {
   if (!med) { return; }
   const info = findMedicineInfo(med.name);
 
+  let language = settings.language;
+  if (info && !hasTranslation(info)) {
+    language = "en";
+  }
+
   let text = med.name + ". " + med.dose + ". ";
   if (info) {
-    text = text + "What it is used for. " + info.helps + " ";
-    text = text + "How to take it. " + info.how + " ";
-    text = text + "Common side effects. " + info.sideEffects + " ";
-    text = text + "Precautions. " + info.precautions;
+    text = text + tIn(language, "info_helps") + ". " + medicineTextIn(language, info, "helps") + " ";
+    text = text + tIn(language, "info_how") + ". " + medicineTextIn(language, info, "how") + " ";
+    text = text + tIn(language, "info_side") + ". " + medicineTextIn(language, info, "sideEffects") + " ";
+    text = text + tIn(language, "info_precautions") + ". " + medicineTextIn(language, info, "precautions");
   }
-  speak(text);
+  speak(text, language);
+}
+
+// A small message that shows at the bottom for a few seconds
+function showToast(message) {
+  let toast = document.getElementById("toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.className = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(function () {
+    toast.classList.remove("show");
+  }, 4000);
 }

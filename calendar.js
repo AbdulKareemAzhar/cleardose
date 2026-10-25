@@ -5,7 +5,8 @@
 // =====================================================
 
 // Each appointment looks like:
-// { id: 1, title: "Dr. Patel - heart check", date: "2026-10-25", time: "10:30" }
+// { id: 1, title: "Dr. Patel - heart check", date: "2026-10-25", time: "10:30",
+//   place: "123 Main St, Fremont, CA" }
 let appointments = [];
 let nextAppointmentId = 1;
 
@@ -47,22 +48,33 @@ function textToDate(text) {
   return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
 }
 
-// Turns "14:30" into "2:30 PM"
+// Turns "14:30" into "2:30 PM" (in the chosen language)
 function niceTime(time) {
   const parts = time.split(":");
-  let hour = Number(parts[0]);
-  const minutes = parts[1];
-  let ending = "AM";
-  if (hour >= 12) { ending = "PM"; }
-  if (hour > 12) { hour = hour - 12; }
-  if (hour === 0) { hour = 12; }
-  return hour + ":" + minutes + " " + ending;
+  const date = new Date(2026, 0, 1, Number(parts[0]), Number(parts[1]));
+  return date.toLocaleTimeString(currentLocale(), { hour: "numeric", minute: "2-digit" });
 }
 
-// Turns "2026-10-25" into "Sun, Oct 25"
+// Turns "2026-10-25" into "Sun, Oct 25" (in the chosen language)
 function niceDate(text) {
   const options = { weekday: "short", month: "short", day: "numeric" };
-  return textToDate(text).toLocaleDateString("en-US", options);
+  return textToDate(text).toLocaleDateString(currentLocale(), options);
+}
+
+// A link that opens the address in the phone's map app
+function mapLink(place) {
+  return "https://maps.apple.com/?q=" + encodeURIComponent(place);
+}
+
+// The words for one appointment (used here and on the Home page)
+function appointmentText(appt) {
+  let html = '<p class="bold"><bdi>' + cleanText(appt.title) + '</bdi></p>';
+  html = html + '<p class="faded">' + t("appt_when", { date: niceDate(appt.date), time: niceTime(appt.time) }) + '</p>';
+  if (appt.place) {
+    html = html + '<a class="placeLink" href="' + mapLink(appt.place) + '" target="_blank">';
+    html = html + '<span class="material-symbols-outlined">location_on</span><bdi>' + cleanText(appt.place) + '</bdi></a>';
+  }
+  return html;
 }
 
 // The day the person started using the app (so older days aren't marked red)
@@ -94,7 +106,7 @@ function dayColor(dayText) {
     return "";
   }
 
-  const total = countAllDoses();
+  const total = countAllDoses(dayText);
   if (total === 0) {
     return "";
   }
@@ -125,16 +137,17 @@ function hasAppointment(dayText) {
 }
 
 function showCalendar() {
-  const monthNames = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"];
-  document.getElementById("monthTitle").textContent = monthNames[calendarMonth] + " " + calendarYear;
+  // the month and year, like "October 2026" (in the chosen language)
+  const firstOfMonth = new Date(calendarYear, calendarMonth, 1);
+  document.getElementById("monthTitle").textContent = firstOfMonth.toLocaleDateString(currentLocale(), { month: "long", year: "numeric" });
 
   let html = "";
 
   // the day names on top
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  for (let i = 0; i < dayNames.length; i++) {
-    html = html + '<div class="dayName">' + dayNames[i] + '</div>';
+  // January 4, 2026 was a Sunday, so these are Sunday to Saturday
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(2026, 0, 4 + i);
+    html = html + '<div class="dayName">' + day.toLocaleDateString(currentLocale(), { weekday: "short" }) + '</div>';
   }
 
   // empty boxes before the 1st of the month
@@ -197,11 +210,12 @@ function pickDay(dayText) {
 function addAppointment() {
   const title = document.getElementById("apptTitle").value.trim();
   const date = document.getElementById("apptDate").value;
+  const place = document.getElementById("apptPlace").value.trim();
   let time = document.getElementById("apptTime").value;
   const message = document.getElementById("apptMessage");
 
   if (title === "" || date === "") {
-    message.textContent = "Please type what the appointment is and pick a date.";
+    message.textContent = t("appt_need");
     return;
   }
   if (time === "") {
@@ -212,13 +226,15 @@ function addAppointment() {
     id: nextAppointmentId,
     title: title,
     date: date,
-    time: time
+    time: time,
+    place: place
   });
   nextAppointmentId = nextAppointmentId + 1;
   saveAppointments();
 
   // clear the form
   document.getElementById("apptTitle").value = "";
+  document.getElementById("apptPlace").value = "";
   message.textContent = "";
 
   // jump the calendar to that month
@@ -229,7 +245,7 @@ function addAppointment() {
 }
 
 function removeAppointment(id) {
-  const sure = confirm("Remove this appointment?");
+  const sure = confirm(t("confirm_remove_appt"));
   if (!sure) {
     return;
   }
@@ -254,15 +270,14 @@ function showAppointmentList() {
     html = html + '<div class="card iconCard">';
     html = html + '<span class="material-symbols-outlined iconCircle">event</span>';
     html = html + '<div>';
-    html = html + '<p class="bold">' + cleanText(appt.title) + '</p>';
-    html = html + '<p class="faded">' + niceDate(appt.date) + ' at ' + niceTime(appt.time) + '</p>';
-    html = html + '<button class="smallButton removeButton" onclick="removeAppointment(' + appt.id + ')"><span class="material-symbols-outlined">delete</span>Remove</button>';
+    html = html + appointmentText(appt);
+    html = html + '<button class="smallButton removeButton" onclick="removeAppointment(' + appt.id + ')"><span class="material-symbols-outlined">delete</span>' + t("remove") + '</button>';
     html = html + '</div>';
     html = html + '</div>';
   }
 
   if (html === "") {
-    html = '<p class="faded">No upcoming appointments.</p>';
+    html = '<p class="faded">' + t("no_appointments") + '</p>';
   }
 
   document.getElementById("appointmentList").innerHTML = html;

@@ -1,8 +1,9 @@
 // ClearDose - the main app file
-// (It runs last, after medicines.js, calendar.js and healthy.js)
+// (It runs last, after all the other files have loaded)
+// t("...") gets a word or sentence in the chosen language (see languages.js)
 
 // =====================================================
-// PART 1: LOOK AND FEEL SETTINGS
+// PART 1: SETTINGS
 // =====================================================
 
 // Starting settings (Merriweather and large text, like we picked)
@@ -11,7 +12,9 @@ let settings = {
   font: "serif",
   size: "large",
   contrast: false,
-  name: ""
+  name: "",
+  language: "en",
+  reminders: true
 };
 
 const themeSelect = document.getElementById("themeSelect");
@@ -19,11 +22,17 @@ const fontSelect = document.getElementById("fontSelect");
 const sizeSelect = document.getElementById("sizeSelect");
 const contrastBox = document.getElementById("contrastBox");
 const nameInput = document.getElementById("nameInput");
+const remindersBox = document.getElementById("remindersBox");
 
 function loadSettings() {
   const saved = localStorage.getItem("cleardoseLook");
   if (saved) {
-    settings = JSON.parse(saved);
+    // copy each saved setting over the starting ones
+    // (so new settings we add later still get a starting value)
+    const savedSettings = JSON.parse(saved);
+    for (const key in savedSettings) {
+      settings[key] = savedSettings[key];
+    }
   }
 }
 
@@ -38,11 +47,20 @@ function applySettings() {
   page.setAttribute("data-size", settings.size);
   page.setAttribute("data-contrast", settings.contrast ? "high" : "normal");
 
+  // language: Urdu and Arabic are read right-to-left
+  page.setAttribute("lang", settings.language);
+  page.setAttribute("dir", isRightToLeft() ? "rtl" : "ltr");
+  translatePage();
+  showLanguageButtons();
+  fillTimeRanges();
+  fillWeekdays();
+
   themeSelect.value = settings.theme;
   fontSelect.value = settings.font;
   sizeSelect.value = settings.size;
   contrastBox.checked = settings.contrast;
   nameInput.value = settings.name || "";
+  remindersBox.checked = settings.reminders;
 }
 
 themeSelect.addEventListener("change", function () {
@@ -72,8 +90,37 @@ contrastBox.addEventListener("change", function () {
 nameInput.addEventListener("input", function () {
   settings.name = nameInput.value;
   saveSettings();
-  showHome();
 });
+
+remindersBox.addEventListener("change", function () {
+  settings.reminders = remindersBox.checked;
+  saveSettings();
+});
+
+// The language buttons on the Settings page
+function showLanguageButtons() {
+  let html = "";
+  for (let i = 0; i < languages.length; i++) {
+    const lang = languages[i];
+    let buttonClass = "languageButton";
+    if (lang.code === settings.language) {
+      buttonClass = buttonClass + " active";
+    }
+    html = html + '<button class="' + buttonClass + '" onclick="setLanguage(\'' + lang.code + '\')">';
+    html = html + '<span class="bold">' + lang.name + '</span>';
+    html = html + '<span class="faded">' + lang.english + '</span>';
+    html = html + '</button>';
+  }
+  document.getElementById("languageButtons").innerHTML = html;
+}
+
+function setLanguage(code) {
+  settings.language = code;
+  saveSettings();
+  applySettings();
+  showFormCount();
+  showPage(currentPage);
+}
 
 
 // =====================================================
@@ -82,7 +129,11 @@ nameInput.addEventListener("input", function () {
 
 // The person's own medicines. They are saved in the browser.
 // Each one looks like:
-// { id: 1, name: "Metformin", dose: "500 mg", times: ["morning", "evening"] }
+// { id: 1, name: "Metformin", dose: "500 mg", times: ["morning", "evening"],
+//   count: 1, often: "daily", weekday: 0 }
+//   count   = how many pills (or puffs, drops...) each time
+//   often   = "daily", "weekly", or "asneeded"
+//   weekday = for weekly medicines: 0 = Sunday, 1 = Monday ... 6 = Saturday
 let medicines = [];
 
 // Every new medicine gets the next number as its id
@@ -93,12 +144,20 @@ function loadMedicines() {
   if (saved) {
     medicines = JSON.parse(saved);
   }
-  // find the biggest id so new ones don't repeat it
   for (let i = 0; i < medicines.length; i++) {
+    // medicines saved before we added these get the normal values
+    if (!medicines[i].count) { medicines[i].count = 1; }
+    if (!medicines[i].often) { medicines[i].often = "daily"; }
+
+    // find the biggest id so new ones don't repeat it
     if (medicines[i].id >= nextId) {
       nextId = medicines[i].id + 1;
     }
   }
+}
+
+function saveMedicines() {
+  localStorage.setItem("cleardoseMedicines", JSON.stringify(medicines));
 }
 
 // Finds one of the person's medicines by its id number
@@ -111,17 +170,27 @@ function findMyMedicine(medId) {
   return null;
 }
 
-function saveMedicines() {
-  localStorage.setItem("cleardoseMedicines", JSON.stringify(medicines));
-}
-
 // Gets " - what it's for", or a blank if we don't know the medicine
 function getUse(med) {
   const info = findMedicineInfo(med.name);
   if (info) {
-    return " - " + info.use;
+    return " - " + medicineText(info, "use");
   }
   return "";
+}
+
+// What one dose is called: "pill", "puff", "drop"...
+function getUnit(med) {
+  const info = findMedicineInfo(med.name);
+  if (info) {
+    return info.unit;
+  }
+  return "pill";
+}
+
+// Turns a number and a unit into words, like "2 pills" or "1 puff"
+function countText(count, unit) {
+  return countTextIn(settings.language, count, unit);
 }
 
 // Makes typed text safe to show on the page
@@ -142,17 +211,45 @@ function sortByName(list) {
 // The four times of day, in order
 const timesOfDay = ["morning", "noon", "evening", "bedtime"];
 
-// Name and hours for each time of day.
-// start and end are hours on a 24-hour clock (17 = 5 PM).
+// The hours for each time of day (24-hour clock, so 17 = 5 PM)
 const timeSlots = {
-  morning: { name: "Morning", start: 6,  end: 10, range: "6 – 10 AM" },
-  noon:    { name: "Midday",  start: 11, end: 14, range: "11 AM – 2 PM" },
-  evening: { name: "Evening", start: 17, end: 20, range: "5 – 8 PM" },
-  bedtime: { name: "Bedtime", start: 21, end: 23, range: "9 – 11 PM" }
+  morning: { start: 6,  end: 10 },
+  noon:    { start: 11, end: 14 },
+  evening: { start: 17, end: 20 },
+  bedtime: { start: 21, end: 23 }
 };
 
+// The name of a time of day in the chosen language, like "Morning"
+function slotName(time) {
+  return t("slot_" + time);
+}
+
+// The hours of a time of day, like "6 AM – 10 AM"
+function slotRange(time) {
+  return formatHour(timeSlots[time].start) + " – " + formatHour(timeSlots[time].end);
+}
+
+// The same, wrapped in <bdi> so it shows the right way around
+// inside right-to-left languages like Urdu and Arabic
+function slotRangeHtml(time) {
+  return "<bdi>" + slotRange(time) + "</bdi>";
+}
+
+// A medicine's dose and what it's for, like "500 mg - Controls blood sugar"
+function doseAndUse(med) {
+  return "<bdi>" + cleanText(med.dose) + "</bdi>" + getUse(med);
+}
+
+// Puts the hours next to each time-of-day checkbox in the form
+function fillTimeRanges() {
+  const spots = document.querySelectorAll(".rangeText");
+  for (let i = 0; i < spots.length; i++) {
+    spots[i].textContent = slotRange(spots[i].getAttribute("data-slot"));
+  }
+}
+
 // The history remembers which doses were taken on each day.
-// It looks like this:  { "2026-10-23": ["1-morning", "2-morning"] }
+// It looks like this:  { "2026-10-23": ["1-morning", "2-morning", "5-asneeded"] }
 let history = {};
 
 function loadHistory() {
@@ -187,8 +284,30 @@ function todayText() {
 
 
 // =====================================================
-// PART 4: TAKING A DOSE
+// PART 4: WHICH MEDICINES ARE DUE, AND TAKING A DOSE
 // =====================================================
+
+// Is this medicine supposed to be taken on this day?
+function isScheduledOn(med, dayText) {
+  if (med.often === "asneeded") {
+    return false;                                    // only when needed: never "due"
+  }
+  if (med.often === "weekly") {
+    return textToDate(dayText).getDay() === med.weekday;   // only on its day
+  }
+  return true;                                       // every day
+}
+
+// All the medicines that are due on a day
+function medicinesDueOn(dayText) {
+  let list = [];
+  for (let i = 0; i < medicines.length; i++) {
+    if (isScheduledOn(medicines[i], dayText)) {
+      list.push(medicines[i]);
+    }
+  }
+  return list;
+}
 
 // Checks if one dose was taken on a day
 function wasTaken(day, medId, time) {
@@ -225,22 +344,23 @@ function toggleDose(medId, time) {
   showHome();
 }
 
-// Counts how many doses there are in one day
-function countAllDoses() {
+// Counts how many doses are due on a day
+function countAllDoses(day) {
+  const due = medicinesDueOn(day);
   let total = 0;
-  for (let i = 0; i < medicines.length; i++) {
-    total = total + medicines[i].times.length;
+  for (let i = 0; i < due.length; i++) {
+    total = total + due[i].times.length;
   }
   return total;
 }
 
-// Counts how many doses were taken on a day
+// Counts how many of that day's doses were taken
 function countTaken(day) {
+  const due = medicinesDueOn(day);
   let taken = 0;
-  for (let i = 0; i < medicines.length; i++) {
-    const med = medicines[i];
-    for (let j = 0; j < med.times.length; j++) {
-      if (wasTaken(day, med.id, med.times[j])) {
+  for (let i = 0; i < due.length; i++) {
+    for (let j = 0; j < due[i].times.length; j++) {
+      if (wasTaken(day, due[i].id, due[i].times[j])) {
         taken = taken + 1;
       }
     }
@@ -250,8 +370,47 @@ function countTaken(day) {
 
 // True if every dose was taken that day
 function allTaken(day) {
-  const total = countAllDoses();
+  const total = countAllDoses(day);
   return total > 0 && countTaken(day) === total;
+}
+
+// ---------- "Only when needed" medicines ----------
+
+// How many times an "as needed" medicine was taken on a day
+function countAsNeeded(day, medId) {
+  if (!history[day]) {
+    return 0;
+  }
+  let count = 0;
+  for (let i = 0; i < history[day].length; i++) {
+    if (history[day][i] === medId + "-asneeded") {
+      count = count + 1;
+    }
+  }
+  return count;
+}
+
+function logAsNeeded(medId) {
+  const day = todayText();
+  if (!history[day]) {
+    history[day] = [];
+  }
+  history[day].push(medId + "-asneeded");
+  saveHistory();
+  showHome();
+}
+
+function undoAsNeeded(medId) {
+  const day = todayText();
+  if (!history[day]) {
+    return;
+  }
+  const spot = history[day].lastIndexOf(medId + "-asneeded");
+  if (spot !== -1) {
+    history[day].splice(spot, 1);   // remove that one entry
+  }
+  saveHistory();
+  showHome();
 }
 
 
@@ -261,18 +420,30 @@ function allTaken(day) {
 
 // Counts days in a row where every medicine was taken
 function getStreak() {
+  const start = getStartDate();
+  if (!start) {
+    return 0;
+  }
+
   let streak = 0;
-  const day = new Date();
 
   // Today only counts once everything is done
-  if (allTaken(dateToText(day))) {
+  if (allTaken(todayText())) {
     streak = 1;
   }
 
-  // Then go back one day at a time
+  // Then go back one day at a time, until the day they started
+  const day = new Date();
   day.setDate(day.getDate() - 1);
-  while (allTaken(dateToText(day))) {
-    streak = streak + 1;
+  while (dateToText(day) >= start) {
+    const dayText = dateToText(day);
+    if (countAllDoses(dayText) === 0) {
+      // nothing was due that day, so it doesn't count or break the streak
+    } else if (allTaken(dayText)) {
+      streak = streak + 1;
+    } else {
+      break;
+    }
     day.setDate(day.getDate() - 1);
   }
 
@@ -289,11 +460,11 @@ function showHome() {
 
   // Greeting depends on the time of day
   const hour = new Date().getHours();
-  let greeting = "Good evening";
+  let greeting = t("good_evening");
   if (hour < 12) {
-    greeting = "Good morning";
+    greeting = t("good_morning");
   } else if (hour < 17) {
-    greeting = "Good afternoon";
+    greeting = t("good_afternoon");
   }
   if (settings.name) {
     greeting = greeting + ", " + settings.name;
@@ -302,7 +473,7 @@ function showHome() {
 
   // Today's date, written out in words
   const dateOptions = { weekday: "long", month: "long", day: "numeric" };
-  document.getElementById("todayDate").textContent = new Date().toLocaleDateString("en-US", dateOptions);
+  document.getElementById("todayDate").textContent = new Date().toLocaleDateString(currentLocale(), dateOptions);
 
   showProgressRing();
   showStreak();
@@ -312,21 +483,19 @@ function showHome() {
   // Next appointment (from calendar.js)
   const nextAppt = getNextAppointment();
   if (nextAppt) {
-    document.getElementById("nextAppointment").innerHTML =
-      '<p class="bold">' + cleanText(nextAppt.title) + '</p>' +
-      '<p class="faded">' + niceDate(nextAppt.date) + ' at ' + niceTime(nextAppt.time) + '</p>';
+    document.getElementById("nextAppointment").innerHTML = appointmentText(nextAppt);
   } else {
-    document.getElementById("nextAppointment").innerHTML = '<p class="faded">No upcoming appointments.</p>';
+    document.getElementById("nextAppointment").innerHTML = '<p class="faded">' + t("no_appointments") + '</p>';
   }
 
   // Healthy habits summary (from healthy.js)
-  document.getElementById("healthySummary").textContent = countHabits(today) + " of " + habitsPerDay + " habits done today";
+  document.getElementById("healthySummary").textContent = t("habits_done", { done: countHabits(today), total: habitsPerDay });
 }
 
 // ---------- The progress ring ----------
 function showProgressRing() {
   const today = todayText();
-  const total = countAllDoses();
+  const total = countAllDoses(today);
   const taken = countTaken(today);
 
   let percent = 0;
@@ -344,29 +513,33 @@ function showProgressRing() {
   }
 
   document.getElementById("ringNumber").textContent = taken;
-  document.getElementById("ringTotal").textContent = "of " + total;
+  document.getElementById("ringTotal").textContent = t("of_total", { total: total });
 
   // The words next to the ring
-  if (total === 0) {
-    document.getElementById("progressText").textContent = "No medicines yet";
-    document.getElementById("nextDoseText").textContent = "Add your medicines to get started.";
+  if (medicines.length === 0) {
+    document.getElementById("progressText").textContent = t("no_medicines_yet");
+    document.getElementById("nextDoseText").textContent = t("add_to_start");
+  } else if (total === 0) {
+    document.getElementById("progressText").textContent = t("nothing_due");
+    document.getElementById("nextDoseText").textContent = "";
   } else if (taken === total) {
-    document.getElementById("progressText").textContent = "All done for today!";
-    document.getElementById("nextDoseText").textContent = "Great job. See you tomorrow.";
+    document.getElementById("progressText").textContent = t("all_done");
+    document.getElementById("nextDoseText").textContent = t("see_you_tomorrow");
   } else {
-    document.getElementById("progressText").textContent = taken + " of " + total + " doses taken";
-    document.getElementById("nextDoseText").textContent = "Next: " + getNextSlotText();
+    document.getElementById("progressText").textContent = t("doses_taken", { taken: taken, total: total });
+    document.getElementById("nextDoseText").innerHTML = t("next_dose", { slot: getNextSlotText() });
   }
 }
 
 // Finds the first time of day that still has a dose to take
 function getNextSlotText() {
   const today = todayText();
+  const due = medicinesDueOn(today);
   for (let i = 0; i < timesOfDay.length; i++) {
     const time = timesOfDay[i];
-    for (let j = 0; j < medicines.length; j++) {
-      if (medicines[j].times.includes(time) && !wasTaken(today, medicines[j].id, time)) {
-        return timeSlots[time].name + ", " + timeSlots[time].range;
+    for (let j = 0; j < due.length; j++) {
+      if (due[j].times.includes(time) && !wasTaken(today, due[j].id, time)) {
+        return slotName(time) + ", " + slotRangeHtml(time);
       }
     }
   }
@@ -377,18 +550,17 @@ function getNextSlotText() {
 function showStreak() {
   const streak = getStreak();
   if (streak === 1) {
-    document.getElementById("streakText").textContent = "1-day streak";
-    document.getElementById("streakMessage").textContent = "Great start. Keep it going tomorrow!";
+    document.getElementById("streakText").textContent = t("streak_one");
+    document.getElementById("streakMessage").textContent = t("streak_one_message");
   } else if (streak > 1) {
-    document.getElementById("streakText").textContent = streak + "-day streak";
-    document.getElementById("streakMessage").textContent = "Keep it going. You're doing great!";
+    document.getElementById("streakText").textContent = t("streak_many", { days: streak });
+    document.getElementById("streakMessage").textContent = t("streak_many_message");
   } else {
-    document.getElementById("streakText").textContent = "Start your streak today";
-    document.getElementById("streakMessage").textContent = "Take all your medicines today to begin.";
+    document.getElementById("streakText").textContent = t("streak_start");
+    document.getElementById("streakMessage").textContent = t("streak_start_message");
   }
 
   // one dot for each of the last 7 days
-  const letters = ["S", "M", "T", "W", "T", "F", "S"];
   let html = "";
   for (let i = 6; i >= 0; i--) {
     const day = new Date();
@@ -407,16 +579,23 @@ function showStreak() {
 
     html = html + '<div class="streakDay">';
     html = html + '<div class="' + dotClass + '">' + inside + '</div>';
-    html = html + letters[day.getDay()];
+    html = html + shortDayName(day);
     html = html + '</div>';
   }
   document.getElementById("streakDots").innerHTML = html;
 }
 
+// A short name for a day, like "M" for Monday (in the chosen language).
+// Urdu and Arabic don't have one-letter day names, so we use the short name.
+function shortDayName(date) {
+  if (isRightToLeft()) {
+    return date.toLocaleDateString(currentLocale(), { weekday: "short" });
+  }
+  return date.toLocaleDateString(currentLocale(), { weekday: "narrow" });
+}
+
 // ---------- The bar chart for the last 7 days ----------
 function showWeekChart() {
-  const letters = ["S", "M", "T", "W", "T", "F", "S"];
-  const total = countAllDoses();
   const start = getStartDate();
   let html = "";
 
@@ -424,6 +603,7 @@ function showWeekChart() {
     const day = new Date();
     day.setDate(day.getDate() - i);
     const dayText = dateToText(day);
+    const total = countAllDoses(dayText);
 
     // how much of that day's medicine was taken (0 to 100)
     let percent = 0;
@@ -445,7 +625,7 @@ function showWeekChart() {
     html = html + '<div class="barColumn">';
     html = html + '<span class="barValue">' + (barClass.includes("empty") ? "" : percent + "%") + '</span>';
     html = html + '<div class="' + barClass + '" style="height: ' + percent + '%"></div>';
-    html = html + '<span class="' + labelClass + '">' + letters[day.getDay()] + '</span>';
+    html = html + '<span class="' + labelClass + '">' + shortDayName(day) + '</span>';
     html = html + '</div>';
   }
   document.getElementById("weekChart").innerHTML = html;
@@ -460,25 +640,24 @@ function showChecklist() {
   if (medicines.length === 0) {
     let emptyHtml = '<div class="card emptyCard">';
     emptyHtml = emptyHtml + '<span class="material-symbols-outlined emptyIcon">medication</span>';
-    emptyHtml = emptyHtml + '<p class="bold">Add your first medicine</p>';
-    emptyHtml = emptyHtml + '<button class="bigButton" onclick="showPage(\'medicines\')">Go to Medicines</button>';
+    emptyHtml = emptyHtml + '<p class="bold">' + t("add_first") + '</p>';
+    emptyHtml = emptyHtml + '<button class="bigButton" onclick="showPage(\'medicines\')">' + t("go_to_medicines") + '</button>';
     emptyHtml = emptyHtml + '</div>';
     document.getElementById("medicineList").innerHTML = emptyHtml;
     return;
   }
 
   let html = "";
-  const sortedMeds = sortByName(medicines);
+  const dueToday = sortByName(medicinesDueOn(today));
 
   for (let i = 0; i < timesOfDay.length; i++) {
     const time = timesOfDay[i];
-    const slot = timeSlots[time];
 
     // find the medicines for this time
     let medsForThisTime = [];
-    for (let j = 0; j < sortedMeds.length; j++) {
-      if (sortedMeds[j].times.includes(time)) {
-        medsForThisTime.push(sortedMeds[j]);
+    for (let j = 0; j < dueToday.length; j++) {
+      if (dueToday[j].times.includes(time)) {
+        medsForThisTime.push(dueToday[j]);
       }
     }
 
@@ -490,18 +669,18 @@ function showChecklist() {
     // is something from this time still not taken after the time is over?
     let late = false;
     for (let k = 0; k < medsForThisTime.length; k++) {
-      if (hour >= slot.end && !wasTaken(today, medsForThisTime[k].id, time)) {
+      if (hour >= timeSlots[time].end && !wasTaken(today, medsForThisTime[k].id, time)) {
         late = true;
       }
     }
 
-    // the heading, like "Morning  6 – 10 AM"
+    // the heading, like "Morning  6 AM – 10 AM"
     html = html + '<div class="slotHeader slot-' + time + '">';
     html = html + '<span class="slotBar"></span>';
-    html = html + '<span class="slotName">' + slot.name + '</span>';
-    html = html + '<span class="slotTime">' + slot.range + '</span>';
+    html = html + '<span class="slotName">' + slotName(time) + '</span>';
+    html = html + '<span class="slotTime">' + slotRangeHtml(time) + '</span>';
     if (late) {
-      html = html + '<span class="lateTag">LATE</span>';
+      html = html + '<span class="lateTag">' + t("late") + '</span>';
     }
     html = html + '</div>';
 
@@ -520,28 +699,83 @@ function showChecklist() {
 
       html = html + '<div class="' + cardClass + '">';
       html = html + '<div class="cardTop">';
-      html = html + '<p class="medName">' + cleanText(med.name) + '</p>';
-      html = html + '<button class="speakButton" onclick="speakDose(' + med.id + ')" aria-label="Read aloud">';
+      html = html + '<p class="medName"><bdi>' + cleanText(med.name) + '</bdi></p>';
+      html = html + '<button class="speakButton" onclick="speakDose(' + med.id + ')" aria-label="' + t("listen") + '">';
       html = html + '<span class="material-symbols-outlined">volume_up</span></button>';
       html = html + '</div>';
-      html = html + '<p class="faded">' + cleanText(med.dose) + getUse(med) + '</p>';
+      html = html + '<p class="faded">' + doseAndUse(med) + '</p>';
+
+      // "Take 2 pills" (and a tag if it's a weekly medicine)
+      html = html + '<p class="takeLine">' + t("take_amount", { amount: countText(med.count, getUnit(med)) });
+      if (med.often === "weekly") {
+        html = html + ' <span class="smallTag">' + t("weekly_tag") + '</span>';
+      }
+      html = html + '</p>';
 
       if (done) {
         html = html + '<div class="takenRow">';
-        html = html + '<span><span class="material-symbols-outlined">check_circle</span> Taken</span>';
-        html = html + '<button class="undoButton" onclick="toggleDose(' + med.id + ', \'' + time + '\')">Undo</button>';
+        html = html + '<span><span class="material-symbols-outlined">check_circle</span> ' + t("taken") + '</span>';
+        html = html + '<button class="undoButton" onclick="toggleDose(' + med.id + ', \'' + time + '\')">' + t("undo") + '</button>';
         html = html + '</div>';
       } else {
         html = html + '<button class="bigButton" onclick="toggleDose(' + med.id + ', \'' + time + '\')">';
-        html = html + '<span class="material-symbols-outlined">check</span> I took it</button>';
+        html = html + '<span class="material-symbols-outlined">check</span> ' + t("i_took_it") + '</button>';
       }
 
       html = html + '</div>';
     }
   }
 
+  // "Only when needed" medicines go in their own section
+  html = html + showAsNeededCards();
+
+  // Weekly medicines that aren't due today
+  if (dueToday.length === 0 && html === "") {
+    html = '<div class="card"><p class="faded">' + t("nothing_due") + '</p></div>';
+  }
+
   document.getElementById("medicineList").innerHTML = html;
   lastTapped = "";
+}
+
+// Cards for "only when needed" medicines
+function showAsNeededCards() {
+  const today = todayText();
+  let html = "";
+  const sortedMeds = sortByName(medicines);
+
+  for (let i = 0; i < sortedMeds.length; i++) {
+    const med = sortedMeds[i];
+    if (med.often !== "asneeded") {
+      continue;
+    }
+    if (html === "") {
+      html = html + '<div class="slotHeader slot-asneeded"><span class="slotBar"></span>';
+      html = html + '<span class="slotName">' + t("when_needed") + '</span></div>';
+    }
+
+    const timesTaken = countAsNeeded(today, med.id);
+
+    html = html + '<div class="medicine slot-asneeded">';
+    html = html + '<div class="cardTop">';
+    html = html + '<p class="medName"><bdi>' + cleanText(med.name) + '</bdi></p>';
+    html = html + '<button class="speakButton" onclick="speakDose(' + med.id + ')" aria-label="' + t("listen") + '">';
+    html = html + '<span class="material-symbols-outlined">volume_up</span></button>';
+    html = html + '</div>';
+    html = html + '<p class="faded">' + doseAndUse(med) + '</p>';
+    html = html + '<p class="takeLine">' + t("take_amount", { amount: countText(med.count, getUnit(med)) }) + '</p>';
+
+    if (timesTaken > 0) {
+      html = html + '<div class="takenRow">';
+      html = html + '<span><span class="material-symbols-outlined">check_circle</span> ' + t("taken_times", { times: timesTaken }) + '</span>';
+      html = html + '<button class="undoButton" onclick="undoAsNeeded(' + med.id + ')">' + t("undo") + '</button>';
+      html = html + '</div>';
+    }
+    html = html + '<button class="smallButton" onclick="logAsNeeded(' + med.id + ')">';
+    html = html + '<span class="material-symbols-outlined">add</span>' + t("i_took_one") + '</button>';
+    html = html + '</div>';
+  }
+  return html;
 }
 
 
@@ -564,17 +798,29 @@ function infoSection(icon, title, text) {
   return html;
 }
 
+// Words for how often, like "Every day" or "Every Monday"
+function oftenText(med) {
+  if (med.often === "weekly") {
+    return t("every_weekday", { day: weekdayName(med.weekday) });
+  }
+  if (med.often === "asneeded") {
+    return t("often_asneeded");
+  }
+  return t("often_daily");
+}
+
 function showMedicinesPage() {
   let html = "";
 
   if (medicines.length === 0) {
-    html = '<p class="faded">You have not added any medicines yet.</p>';
+    html = '<p class="faded">' + t("no_medicines_added") + '</p>';
   }
 
   const sortedMeds = sortByName(medicines);
   for (let i = 0; i < sortedMeds.length; i++) {
     const med = sortedMeds[i];
     const info = findMedicineInfo(med.name);
+    const unit = getUnit(med);
 
     let cardClass = "medicine";
     if (med.id === justAddedId) {
@@ -584,42 +830,57 @@ function showMedicinesPage() {
     html = html + '<div class="' + cardClass + '" id="med-' + med.id + '">';
 
     if (med.id === justAddedId) {
-      html = html + '<p class="addedBanner"><span class="material-symbols-outlined">check_circle</span>Added! Here is what to know.</p>';
+      html = html + '<p class="addedBanner"><span class="material-symbols-outlined">check_circle</span>' + t("added_banner") + '</p>';
     }
 
     html = html + '<div class="cardTop">';
-    html = html + '<p class="medName">' + cleanText(med.name) + '</p>';
-    html = html + '<button class="speakButton" onclick="speakMedicine(' + med.id + ')" aria-label="Read aloud">';
+    html = html + '<p class="medName"><bdi>' + cleanText(med.name) + '</bdi></p>';
+    html = html + '<button class="speakButton" onclick="speakMedicine(' + med.id + ')" aria-label="' + t("listen") + '">';
     html = html + '<span class="material-symbols-outlined">volume_up</span></button>';
     html = html + '</div>';
-    html = html + '<p class="faded">' + cleanText(med.dose) + getUse(med) + '</p>';
+    html = html + '<p class="faded">' + doseAndUse(med) + '</p>';
 
-    // the times, shown as colored chips like "Morning 6 – 10 AM"
+    // how many each time, with - and + buttons
+    html = html + '<div class="counter smallCounter">';
+    html = html + '<button class="counterButton" onclick="changeMedicineCount(' + med.id + ', -1)" aria-label="Less"><span class="material-symbols-outlined">remove</span></button>';
+    html = html + '<span class="counterNumber">' + med.count + '</span>';
+    html = html + '<button class="counterButton" onclick="changeMedicineCount(' + med.id + ', 1)" aria-label="More"><span class="material-symbols-outlined">add</span></button>';
+    html = html + '<span class="counterUnit">' + (med.count === 1 ? t("unit_" + unit + "_one") : t("unit_" + unit + "_many")) + ' ' + t("each_time") + '</span>';
+    html = html + '</div>';
+
+    // how often, and the times as colored chips
+    html = html + '<span class="chip slot-asneeded">' + oftenText(med) + '</span>';
     for (let j = 0; j < med.times.length; j++) {
       const time = med.times[j];
-      html = html + '<span class="chip slot-' + time + '">' + timeSlots[time].name + ' · ' + timeSlots[time].range + '</span>';
+      html = html + '<span class="chip slot-' + time + '">' + slotName(time) + ' · ' + slotRangeHtml(time) + '</span>';
     }
 
     // the info sections (only shown when opened)
     if (openInfoId === med.id) {
       if (info) {
-        html = html + infoSection("help", "What it is used for", info.helps);
-        html = html + infoSection("schedule", "How to take it", info.how + ' <span class="faded">(Follow your label if it says something different.)</span>');
-        html = html + infoSection("sick", "Common side effects", info.sideEffects);
-        html = html + infoSection("warning", "Precautions", info.precautions);
-        html = html + '<p class="faded smallText">This is a simple summary. Always follow your label and your doctor.</p>';
+        if (!hasTranslation(info)) {
+          html = html + '<p class="faded smallText">' + t("english_only") + '</p>';
+        }
+        if (info.supplement) {
+          html = html + '<p class="notice smallText"><span class="material-symbols-outlined">info</span><span>' + t("supplement_note") + '</span></p>';
+        }
+        html = html + infoSection("help", t("info_helps"), medicineText(info, "helps"));
+        html = html + infoSection("schedule", t("info_how"), medicineText(info, "how") + ' <span class="faded">' + t("follow_label") + '</span>');
+        html = html + infoSection("sick", t("info_side"), medicineText(info, "sideEffects"));
+        html = html + infoSection("warning", t("info_precautions"), medicineText(info, "precautions"));
+        html = html + '<p class="faded smallText">' + t("summary_note") + '</p>';
       } else {
-        html = html + '<p class="faded">ClearDose does not have information about this medicine yet. Ask your pharmacist what it is for and how to take it.</p>';
+        html = html + '<p class="faded">' + t("no_info") + '</p>';
       }
     }
 
     if (openInfoId === med.id) {
-      html = html + '<button class="smallButton" onclick="toggleInfo(' + med.id + ')"><span class="material-symbols-outlined">expand_less</span>Hide info</button>';
+      html = html + '<button class="smallButton" onclick="toggleInfo(' + med.id + ')"><span class="material-symbols-outlined">expand_less</span>' + t("hide_info") + '</button>';
     } else {
-      html = html + '<button class="smallButton" onclick="toggleInfo(' + med.id + ')"><span class="material-symbols-outlined">info</span>More info</button>';
+      html = html + '<button class="smallButton" onclick="toggleInfo(' + med.id + ')"><span class="material-symbols-outlined">info</span>' + t("more_info") + '</button>';
     }
-    html = html + '<button class="smallButton" onclick="speakMedicine(' + med.id + ')"><span class="material-symbols-outlined">volume_up</span>Listen</button>';
-    html = html + '<button class="smallButton removeButton" onclick="removeMedicine(' + med.id + ')"><span class="material-symbols-outlined">delete</span>Remove</button>';
+    html = html + '<button class="smallButton" onclick="speakMedicine(' + med.id + ')"><span class="material-symbols-outlined">volume_up</span>' + t("listen") + '</button>';
+    html = html + '<button class="smallButton removeButton" onclick="removeMedicine(' + med.id + ')"><span class="material-symbols-outlined">delete</span>' + t("remove") + '</button>';
     html = html + '</div>';
   }
 
@@ -633,12 +894,26 @@ function toggleInfo(medId) {
   } else {
     openInfoId = medId;
   }
+  justAddedId = 0;
+  showMedicinesPage();
+}
+
+// The - and + buttons on a medicine card
+function changeMedicineCount(medId, change) {
+  const med = findMyMedicine(medId);
+  if (!med) {
+    return;
+  }
+  med.count = med.count + change;
+  if (med.count < 1) { med.count = 1; }     // never less than 1
+  if (med.count > 20) { med.count = 20; }   // and not silly-big
+  saveMedicines();
   showMedicinesPage();
 }
 
 // Removes a medicine (after asking first)
 function removeMedicine(medId) {
-  const sure = confirm("Remove this medicine?");
+  const sure = confirm(t("confirm_remove"));
   if (!sure) {
     return;
   }
@@ -658,6 +933,12 @@ const medicineName = document.getElementById("medicineName");
 const doseInput = document.getElementById("doseInput");
 const knownMessage = document.getElementById("knownMessage");
 const formMessage = document.getElementById("formMessage");
+const oftenSelect = document.getElementById("oftenSelect");
+const weekdaySelect = document.getElementById("weekdaySelect");
+
+// The number on the form's counter, and what one dose is called
+let formCount = 1;
+let formUnit = "pill";
 
 // Put every medicine from the library into the typing suggestions
 function fillSuggestions() {
@@ -668,6 +949,24 @@ function fillSuggestions() {
   document.getElementById("medicineSuggestions").innerHTML = html;
 }
 
+// The name of a day of the week (0 = Sunday) in the chosen language
+function weekdayName(number) {
+  // January 4, 2026 was a Sunday, so add "number" days to it
+  const day = new Date(2026, 0, 4 + number);
+  return day.toLocaleDateString(currentLocale(), { weekday: "long" });
+}
+
+// Fills the "Which day?" menu with Sunday to Saturday
+function fillWeekdays() {
+  const chosen = weekdaySelect.value;
+  let html = "";
+  for (let i = 0; i < 7; i++) {
+    html = html + '<option value="' + i + '">' + weekdayName(i) + '</option>';
+  }
+  weekdaySelect.innerHTML = html;
+  weekdaySelect.value = chosen || new Date().getDay();
+}
+
 // Checks or un-checks the time boxes
 function setTimeBoxes(times) {
   const boxes = document.querySelectorAll(".timeBox");
@@ -676,18 +975,58 @@ function setTimeBoxes(times) {
   }
 }
 
-// Checks if we know the typed medicine, and fills in the usual dose and times
+// The form's - and + buttons
+function changeFormCount(change) {
+  formCount = formCount + change;
+  if (formCount < 1) { formCount = 1; }
+  if (formCount > 20) { formCount = 20; }
+  showFormCount();
+}
+
+function showFormCount() {
+  document.getElementById("countNumber").textContent = formCount;
+  if (formCount === 1) {
+    document.getElementById("countUnit").textContent = t("unit_" + formUnit + "_one");
+  } else {
+    document.getElementById("countUnit").textContent = t("unit_" + formUnit + "_many");
+  }
+}
+
+// Shows or hides "Which day?" and the times, depending on "How often?"
+function showOftenChoices() {
+  if (oftenSelect.value === "weekly") {
+    document.getElementById("weekdayBox").classList.remove("hidden");
+  } else {
+    document.getElementById("weekdayBox").classList.add("hidden");
+  }
+
+  if (oftenSelect.value === "asneeded") {
+    document.getElementById("timesBox").classList.add("hidden");
+  } else {
+    document.getElementById("timesBox").classList.remove("hidden");
+  }
+}
+
+oftenSelect.addEventListener("change", showOftenChoices);
+
+// Checks if we know the typed medicine, and fills in the usual choices
 function checkKnownMedicine() {
   formMessage.textContent = "";
   const info = findMedicineInfo(medicineName.value);
 
   if (info) {
-    knownMessage.textContent = "ClearDose knows this medicine (" + info.name + "). We filled in the usual dose and times. Change them to match your label.";
+    knownMessage.textContent = t("known_medicine", { name: info.name });
     doseInput.value = info.dose;
     setTimeBoxes(info.times);
+    oftenSelect.value = info.often;
+    formUnit = info.unit;
+    formCount = info.count || 1;   // most medicines are 1 each time
   } else {
     knownMessage.textContent = "";
+    formUnit = "pill";
   }
+  showOftenChoices();
+  showFormCount();
 }
 
 // Every time they type a letter, check again
@@ -704,31 +1043,38 @@ document.getElementById("saveMedicineButton").addEventListener("click", function
 
   // 2. Work out which times are checked
   let times = [];
-  const boxes = document.querySelectorAll(".timeBox");
-  for (let i = 0; i < boxes.length; i++) {
-    if (boxes[i].checked) {
-      times.push(boxes[i].value);
+  if (oftenSelect.value !== "asneeded") {
+    const boxes = document.querySelectorAll(".timeBox");
+    for (let i = 0; i < boxes.length; i++) {
+      if (boxes[i].checked) {
+        times.push(boxes[i].value);
+      }
     }
   }
 
   // 3. Make sure the form is filled in
   if (name === "") {
-    formMessage.textContent = "Please type a medicine name.";
+    formMessage.textContent = t("need_name");
     return;
   }
-  if (times.length === 0) {
-    formMessage.textContent = "Please pick at least one time.";
+  if (oftenSelect.value !== "asneeded" && times.length === 0) {
+    formMessage.textContent = t("need_time");
     return;
   }
 
   // 4. Add it to the list and save
-  const newId = nextId;
-  medicines.push({
-    id: newId,
+  const newMedicine = {
+    id: nextId,
     name: name,
     dose: doseInput.value.trim(),
-    times: times
-  });
+    times: times,
+    count: formCount,
+    often: oftenSelect.value
+  };
+  if (oftenSelect.value === "weekly") {
+    newMedicine.weekday = Number(weekdaySelect.value);
+  }
+  medicines.push(newMedicine);
   nextId = nextId + 1;
   saveMedicines();
   setStartDateIfMissing();
@@ -739,15 +1085,20 @@ document.getElementById("saveMedicineButton").addEventListener("click", function
   knownMessage.textContent = "";
   formMessage.textContent = "";
   setTimeBoxes([]);
+  oftenSelect.value = "daily";
+  formCount = 1;
+  formUnit = "pill";
+  showFormCount();
+  showOftenChoices();
   document.getElementById("scanStatus").textContent = "";
   document.getElementById("scanPreview").classList.add("hidden");
   document.getElementById("scanTextBox").classList.add("hidden");
 
   // 6. Show the new medicine with its information open
-  openInfoId = newId;
-  justAddedId = newId;
+  openInfoId = newMedicine.id;
+  justAddedId = newMedicine.id;
   showMedicinesPage();
-  document.getElementById("med-" + newId).scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById("med-" + newMedicine.id).scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 
@@ -756,22 +1107,35 @@ document.getElementById("saveMedicineButton").addEventListener("click", function
 // =====================================================
 
 function loadSampleData() {
-  const sure = confirm("Replace your medicines with the sample patient?");
+  const sure = confirm(t("confirm_sample"));
   if (!sure) {
     return;
   }
 
-  // 1. Sample medicines
-  const sampleNames = ["Aspirin", "Atorvastatin", "Lisinopril", "Metformin"];
+  // 1. Sample medicines: name, how many, how often
+  const samples = [
+    { name: "Aspirin", count: 1, often: "daily" },
+    { name: "Atorvastatin", count: 1, often: "daily" },
+    { name: "Fish Oil", count: 2, often: "daily" },
+    { name: "Lisinopril", count: 1, often: "daily" },
+    { name: "Metformin", count: 1, often: "daily" },
+    { name: "Albuterol", count: 2, often: "asneeded" }
+  ];
   medicines = [];
   nextId = 1;
-  for (let i = 0; i < sampleNames.length; i++) {
-    const info = findMedicineInfo(sampleNames[i]);
+  for (let i = 0; i < samples.length; i++) {
+    const info = findMedicineInfo(samples[i].name);
+    let times = info.times;
+    if (samples[i].often === "asneeded") {
+      times = [];
+    }
     medicines.push({
       id: nextId,
       name: info.name,
       dose: info.dose,
-      times: info.times
+      times: times,
+      count: samples[i].count,
+      often: samples[i].often
     });
     nextId = nextId + 1;
   }
@@ -791,9 +1155,10 @@ function loadSampleData() {
     const dayText = dateToText(day);
 
     history[dayText] = [];
-    for (let i = 0; i < medicines.length; i++) {
-      for (let j = 0; j < medicines[i].times.length; j++) {
-        history[dayText].push(medicines[i].id + "-" + medicines[i].times[j]);
+    const due = medicinesDueOn(dayText);
+    for (let i = 0; i < due.length; i++) {
+      for (let j = 0; j < due[i].times.length; j++) {
+        history[dayText].push(due[i].id + "-" + due[i].times[j]);
       }
     }
     if (d === 3) {
@@ -813,8 +1178,8 @@ function loadSampleData() {
   const later = new Date();
   later.setDate(later.getDate() + 9);
   appointments = [
-    { id: 1, title: "Dr. Patel - heart check-up", date: dateToText(soon), time: "10:30" },
-    { id: 2, title: "Pharmacy - pick up refills", date: dateToText(later), time: "14:00" }
+    { id: 1, title: "Dr. Patel - heart check-up", date: dateToText(soon), time: "10:30", place: "2000 Mowry Ave, Fremont, CA" },
+    { id: 2, title: "Pharmacy - pick up refills", date: dateToText(later), time: "14:00", place: "CVS Pharmacy, 39200 Fremont Blvd, Fremont, CA" }
   ];
   nextAppointmentId = 3;
   saveAppointments();
@@ -829,12 +1194,15 @@ function loadSampleData() {
 
 
 // =====================================================
-// PART 10: BOTTOM MENU (switching pages)
+// PART 10: SWITCHING PAGES
 // =====================================================
 
-const pageNames = ["home", "medicines", "calendar", "healthy", "settings"];
+const pageNames = ["home", "medicines", "ask", "calendar", "healthy", "settings"];
+let currentPage = "home";
 
 function showPage(pageName) {
+  currentPage = pageName;
+
   // hide every page and un-highlight every menu button
   for (let i = 0; i < pageNames.length; i++) {
     document.getElementById(pageNames[i] + "Page").classList.add("hidden");
@@ -850,10 +1218,14 @@ function showPage(pageName) {
     showHome();
   } else if (pageName === "medicines") {
     showMedicinesPage();
+  } else if (pageName === "ask") {
+    showChat();
   } else if (pageName === "calendar") {
     showCalendar();
   } else if (pageName === "healthy") {
     showHealthy();
+  } else if (pageName === "settings") {
+    showNotificationStatus();
   }
 
   window.scrollTo(0, 0);
@@ -864,10 +1236,13 @@ function showPage(pageName) {
 // START UP
 // =====================================================
 loadSettings();
-applySettings();
 loadHistory();
 loadMedicines();
 loadAppointments();
 loadHabits();
+applySettings();
 fillSuggestions();
+showFormCount();
+showOftenChoices();
 showPage("home");
+startReminders();

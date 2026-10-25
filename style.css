@@ -86,10 +86,15 @@
 }
 
 /* ---------- FONTS ---------- */
-[data-font="system"]   { --font: system-ui, Arial, sans-serif; }
-[data-font="atkinson"] { --font: "Atkinson Hyperlegible", Arial, sans-serif; }
-[data-font="lexend"]   { --font: "Lexend", Arial, sans-serif; }
-[data-font="serif"]    { --font: "Merriweather", Georgia, serif; }
+[data-font="system"]   { --font: system-ui, Arial; }
+[data-font="atkinson"] { --font: "Atkinson Hyperlegible", Arial; }
+[data-font="lexend"]   { --font: "Lexend", Arial; }
+[data-font="serif"]    { --font: "Merriweather", Georgia; }
+
+/* Fonts for other writing systems (used for letters the main font doesn't have) */
+:root          { --script-font: "Noto Sans SC"; }
+[lang="ur"]    { --script-font: "Noto Nastaliq Urdu"; }
+[lang="ar"]    { --script-font: "Noto Naskh Arabic"; }
 
 /* ---------- TEXT SIZE ---------- */
 [data-size="normal"]  { font-size: 17px; }
@@ -108,7 +113,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font);
+  font-family: var(--font), var(--script-font), sans-serif;
   line-height: 1.5;
 }
 
@@ -228,7 +233,7 @@ input[type="checkbox"] { accent-color: var(--primary); }
   font-weight: bold;
   padding: 9px 14px;
   margin-top: 10px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
   border: 2px solid var(--primary);
   border-radius: 12px;
   background: var(--card);
@@ -406,7 +411,7 @@ input[type="checkbox"] { accent-color: var(--primary); }
 .medicine {
   background: var(--card);
   border: 1px solid var(--border);
-  border-left: 6px solid var(--slot, var(--primary));
+  border-inline-start: 6px solid var(--slot, var(--primary));
   border-radius: 16px;
   padding: 14px 16px;
   margin-bottom: 10px;
@@ -415,7 +420,7 @@ input[type="checkbox"] { accent-color: var(--primary); }
 
 .medicine.taken { background: var(--done); }
 
-[data-contrast="high"] .medicine { border-width: 3px; border-left-width: 8px; }
+[data-contrast="high"] .medicine { border-width: 3px; border-inline-start-width: 8px; }
 
 .medName { font-size: 1.15rem; font-weight: bold; margin: 0; }
 .medicine .faded { margin: 2px 0 0 0; }
@@ -497,7 +502,7 @@ input[type="checkbox"] { accent-color: var(--primary); }
 
 .linkCard {
   width: 100%;
-  text-align: left;
+  text-align: start;
   font-family: inherit;
   font-size: 1rem;
   color: var(--text);
@@ -505,7 +510,7 @@ input[type="checkbox"] { accent-color: var(--primary); }
 }
 
 .linkCard span span { display: block; }
-.arrow { margin-left: auto; color: var(--faded); }
+.arrow { margin-inline-start: auto; color: var(--faded); }
 
 .emptyCard { text-align: center; }
 .emptyIcon { font-size: 3rem; color: var(--primary); }
@@ -534,7 +539,8 @@ input[type="checkbox"] { accent-color: var(--primary); }
   font-size: 0.8rem;
   font-weight: bold;
   padding: 3px 10px;
-  margin: 8px 6px 0 0;
+  margin-block-start: 8px;
+  margin-inline-end: 6px;
   border-radius: 20px;
   border: 2px solid var(--slot);
   color: var(--text);
@@ -549,13 +555,13 @@ input[type="checkbox"] { accent-color: var(--primary); }
   margin: 0;
   padding: 10px 12px;
   border: 2px solid var(--border);
-  border-left: 6px solid var(--slot);
+  border-inline-start: 6px solid var(--slot);
   border-radius: 12px;
   cursor: pointer;
 }
 
 .timeChoice input { width: 22px; height: 22px; }
-.timeChoice .faded { margin-left: auto; font-weight: normal; font-size: 0.85rem; }
+.timeChoice .faded { margin-inline-start: auto; font-weight: normal; font-size: 0.85rem; }
 
 /* ---------- CALENDAR ---------- */
 .monthRow {
@@ -820,3 +826,298 @@ nav {
   font-size: 0.85rem;
   margin: 16px 0 0 0;
 }
+
+
+/* =====================================================
+   NEW IN THIS VERSION
+   ===================================================== */
+
+/* ---------- Right-to-left languages (Urdu, Arabic) ---------- */
+/* spaced-out capital letters break Urdu and Arabic letters apart */
+[dir="rtl"] .dateLine,
+[dir="rtl"] .sectionTitle,
+[dir="rtl"] .infoTitle { letter-spacing: 0; text-transform: none; }
+
+/* Urdu's Nastaliq writing needs more space between lines */
+[lang="ur"] body { line-height: 2; }
+
+/* arrows point the other way in right-to-left languages */
+[dir="rtl"] .flipInRtl { transform: scaleX(-1); }
+
+/* ---------- Header settings button ---------- */
+.headerText { flex: 1; }
+
+.headerButton {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.headerButton.active { background: rgba(255, 255, 255, 0.35); }
+
+/* ---------- The - 1 + counter ---------- */
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.counterButton {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  background: var(--card);
+  color: var(--primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.counterButton:active { background: var(--primary-soft); }
+
+.counterNumber {
+  min-width: 2ch;
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: bold;
+}
+
+.counterUnit { color: var(--faded); }
+
+.smallCounter { margin: 10px 0 4px 0; }
+.smallCounter .counterButton { width: 38px; height: 38px; }
+.smallCounter .counterNumber { font-size: 1.2rem; }
+
+.takeLine { margin: 6px 0 0 0; font-weight: bold; }
+
+.smallTag {
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+/* "only when needed" medicines get a grey color */
+.slot-asneeded { --slot: var(--faded); }
+
+/* ---------- Appointment location link ---------- */
+.placeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  color: var(--primary);
+  font-weight: bold;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.placeLink .material-symbols-outlined { font-size: 1.2rem; }
+
+/* ---------- Notice box ---------- */
+.notice {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: var(--primary-soft);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+}
+
+/* ---------- Ask (chat) page ---------- */
+.chatBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: 4px 0 10px 0;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 12px 14px;
+  border-radius: 18px;
+  overflow-wrap: anywhere;
+}
+
+.myBubble {
+  align-self: flex-end;
+  background: var(--primary);
+  color: var(--primary-text);
+  border-end-end-radius: 4px;
+}
+
+.botBubble {
+  align-self: flex-start;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-end-start-radius: 4px;
+  box-shadow: var(--shadow);
+}
+
+.bubbleSpeak {
+  display: block;
+  margin-top: 6px;
+  border: none;
+  background: none;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.quickQuestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px 0;
+}
+
+.quickButton {
+  border: 2px solid var(--primary);
+  background: var(--card);
+  color: var(--primary);
+  border-radius: 20px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.chatInputRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chatInputRow input { margin-top: 0; }
+
+.sendButton {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary);
+  color: var(--primary-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Language buttons ---------- */
+.languageButtons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.languageButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 8px;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.languageButton .faded { font-size: 0.75rem; }
+.languageButton.active { border-color: var(--primary); background: var(--primary-soft); }
+
+/* ---------- Reminder pop-up ---------- */
+.popupBackground {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 10, 30, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.popupBackground.hidden { display: none; }
+
+.popup {
+  background: var(--card);
+  color: var(--text);
+  border-radius: 24px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  border: 2px solid var(--border);
+}
+
+.popup h2 { margin: 6px 0 4px 0; }
+
+.popupIcon {
+  font-size: 3rem;
+  color: var(--primary);
+  animation: ring 0.6s ease 2;
+}
+
+@keyframes ring {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-15deg); }
+  75% { transform: rotate(15deg); }
+}
+
+.popupMedicine {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  text-align: start;
+}
+
+.popup .iconCard, .popup .bold { text-align: start; }
+
+/* ---------- Toast (small message at the bottom) ---------- */
+.toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 90px;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 16px;
+  border-radius: 14px;
+  text-align: center;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 60;
+}
+
+.toast.show { opacity: 1; }
+
+/* narrow day names in Urdu and Arabic are whole words, so make them smaller */
+[dir="rtl"] .streakDay, [dir="rtl"] .barLabel { font-size: 0.6rem; }
